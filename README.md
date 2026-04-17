@@ -1,6 +1,6 @@
 # tmux-whisper
 
-`tmux-whisper` is a small tmux plugin that brings `whisper.cpp` voice transcription directly into a tmux workflow.
+`tmux-whisper` is a small tmux plugin that brings [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp) voice transcription directly into a tmux workflow.
 
 Common uses:
 
@@ -53,14 +53,39 @@ The status segment shows one of four states:
 ## Options
 
 ```tmux
-set -g @tmux_whisper_model '/path/to/ggml-base.en.bin'
 set -g @tmux_whisper_key 'v'
 set -g @tmux_whisper_icon '◉'
 set -g @tmux_whisper_sound_enabled '1'
 set -g @tmux_whisper_show_messages '0'
 ```
 
-If `@tmux_whisper_model` is not set, the plugin tries common `whisper.cpp` model locations.
+## Model Selection
+
+If `@tmux_whisper_model` is not set, the plugin lets `whisper-cli` use its own default model.
+
+In `whisper.cpp`, that default is typically:
+
+```text
+models/ggml-base.en.bin
+```
+
+If you want a different model, set it explicitly in your `~/.tmux.conf`:
+
+```tmux
+set -g @tmux_whisper_model '/full/path/to/ggml-medium.en.bin'
+```
+
+Examples:
+
+- `ggml-base.en.bin`: faster, lower accuracy
+- `ggml-small.en.bin`: better English accuracy
+- `ggml-medium.en.bin`: better accuracy again, but slower and heavier
+
+After changing `~/.tmux.conf`, reload tmux:
+
+```sh
+tmux source-file ~/.tmux.conf
+```
 
 ## Notes
 

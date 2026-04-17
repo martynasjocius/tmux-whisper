@@ -63,29 +63,6 @@ fail() {
   exit 1
 }
 
-find_model() {
-  configured_model="$(tmux_get @tmux_whisper_model)"
-  if [ -n "$configured_model" ] && [ -f "$configured_model" ]; then
-    printf '%s\n' "$configured_model"
-    return 0
-  fi
-
-  for candidate in \
-    "$HOME/Software/whisper.cpp/models/ggml-base.en.bin" \
-    "$HOME/.local/share/whisper.cpp/models/ggml-base.en.bin" \
-    "/opt/homebrew/share/whisper.cpp/models/ggml-base.en.bin" \
-    "/usr/local/share/whisper.cpp/models/ggml-base.en.bin" \
-    "/usr/share/whisper.cpp/models/ggml-base.en.bin"
-  do
-    if [ -f "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
 start_recording() {
   if ! command -v sox >/dev/null 2>&1; then
     fail "sox not found"
@@ -95,8 +72,9 @@ start_recording() {
     fail "whisper-cli not found"
   fi
 
-  if ! model_path="$(find_model)"; then
-    fail "set @tmux_whisper_model to a Whisper model file"
+  model_path="$(tmux_get @tmux_whisper_model)"
+  if [ -n "$model_path" ] && [ ! -f "$model_path" ]; then
+    fail "configured model file not found"
   fi
 
   wav_path="$(mktemp "${TMPDIR:-/tmp}/tmux-whisper.XXXXXX.wav")"

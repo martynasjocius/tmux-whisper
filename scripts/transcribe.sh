@@ -45,6 +45,62 @@ cleanup() {
   fi
 }
 
+format_message() {
+  tr '\n' ' ' | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//'
+}
+
+resolve_default_workdir() {
+  whisper_bin="$(command -v whisper-cli 2>/dev/null || true)"
+  if [ -z "$whisper_bin" ]; then
+    return 1
+  fi
+
+  if command -v readlink >/dev/null 2>&1; then
+    whisper_bin="$(readlink -f "$whisper_bin" 2>/dev/null || printf '%s\n' "$whisper_bin")"
+  fi
+
+  bin_dir="$(cd "$(dirname "$whisper_bin")" && pwd)"
+
+  for candidate_dir in \
+    "$bin_dir" \
+    "$bin_dir/.." \
+    "$bin_dir/../.."
+  do
+    if [ -f "$candidate_dir/models/ggml-base.en.bin" ]; then
+      printf '%s\n' "$candidate_dir"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+run_whisper() {
+  err_path="$(mktemp "${TMPDIR:-/tmp}/tmux-whisper.stderr.XXXXXX")"
+
+  if [ -n "$model_path" ]; then
+    if ! whisper-cli -m "$model_path" -f "$wav_path" -nt -np 2>"$err_path"; then
+      err_msg="$(format_message < "$err_path")"
+      rm -f "$err_path"
+      finish_with_error "${err_msg:-transcription failed}"
+    fi
+  elif default_workdir="$(resolve_default_workdir)"; then
+    if ! (cd "$default_workdir" && whisper-cli -f "$wav_path" -nt -np) 2>"$err_path"; then
+      err_msg="$(format_message < "$err_path")"
+      rm -f "$err_path"
+      finish_with_error "${err_msg:-transcription failed}"
+    fi
+  else
+    if ! whisper-cli -f "$wav_path" -nt -np 2>"$err_path"; then
+      err_msg="$(format_message < "$err_path")"
+      rm -f "$err_path"
+      finish_with_error "${err_msg:-transcription failed}"
+    fi
+  fi
+
+  rm -f "$err_path"
+}
+
 finish_with_error() {
   cleanup
   tmux_set @tmux_whisper_state "ready"
@@ -60,7 +116,7 @@ if [ -z "$wav_path" ] || [ ! -f "$wav_path" ]; then
   finish_with_error "recording file missing"
 fi
 
-if [ -z "$model_path" ] || [ ! -f "$model_path" ]; then
+if [ -n "$model_path" ] && [ ! -f "$model_path" ]; then
   finish_with_error "model file missing"
 fi
 
@@ -68,11 +124,7 @@ if ! command -v whisper-cli >/dev/null 2>&1; then
   finish_with_error "whisper-cli not found"
 fi
 
-text="$(
-  whisper-cli -m "$model_path" -f "$wav_path" -nt -np 2>/dev/null |
-    tr '\n' ' ' |
-    sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//'
-)"
+text="$(run_whisper | format_message)"
 
 cleanup
 tmux_set @tmux_whisper_wav_path ""
