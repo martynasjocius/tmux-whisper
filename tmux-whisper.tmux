@@ -23,7 +23,7 @@ set_default() {
 
 set_default @tmux_whisper_state "ready"
 set_default @tmux_whisper_icon "◉"
-set_default @tmux_whisper_key "v"
+set_default @tmux_whisper_key "u"
 set_default @tmux_whisper_sound_enabled "1"
 set_default @tmux_whisper_show_messages "0"
 set_default @tmux_whisper_recording_pid ""
