@@ -49,7 +49,7 @@ format_message() {
   tr '\n' ' ' | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//'
 }
 
-resolve_default_workdir() {
+resolve_default_model() {
   whisper_bin="$(command -v whisper-cli 2>/dev/null || true)"
   if [ -z "$whisper_bin" ]; then
     return 1
@@ -61,13 +61,13 @@ resolve_default_workdir() {
 
   bin_dir="$(cd "$(dirname "$whisper_bin")" && pwd)"
 
-  for candidate_dir in \
-    "$bin_dir" \
-    "$bin_dir/.." \
-    "$bin_dir/../.."
+  for candidate in \
+    "$bin_dir/../../models/ggml-medium.en.bin" \
+    "$bin_dir/../../models/ggml-small.en.bin" \
+    "$bin_dir/../../models/ggml-base.en.bin"
   do
-    if [ -f "$candidate_dir/models/ggml-base.en.bin" ]; then
-      printf '%s\n' "$candidate_dir"
+    if [ -f "$candidate" ]; then
+      printf '%s\n' "$candidate"
       return 0
     fi
   done
@@ -84,8 +84,8 @@ run_whisper() {
       rm -f "$err_path"
       finish_with_error "${err_msg:-transcription failed}"
     fi
-  elif default_workdir="$(resolve_default_workdir)"; then
-    if ! (cd "$default_workdir" && whisper-cli -f "$wav_path" -nt -np) 2>"$err_path"; then
+  elif default_model="$(resolve_default_model)"; then
+    if ! whisper-cli -m "$default_model" -f "$wav_path" -nt -np 2>"$err_path"; then
       err_msg="$(format_message < "$err_path")"
       rm -f "$err_path"
       finish_with_error "${err_msg:-transcription failed}"

@@ -13,6 +13,32 @@ tmux_set() {
   tmux set-option -gq "$1" "$2"
 }
 
+resolve_default_model() {
+  whisper_bin="$(command -v whisper-cli 2>/dev/null || true)"
+  if [ -z "$whisper_bin" ]; then
+    return 1
+  fi
+
+  if command -v readlink >/dev/null 2>&1; then
+    whisper_bin="$(readlink -f "$whisper_bin" 2>/dev/null || printf '%s\n' "$whisper_bin")"
+  fi
+
+  bin_dir="$(cd "$(dirname "$whisper_bin")" && pwd)"
+
+  for candidate in \
+    "$bin_dir/../../models/ggml-medium.en.bin" \
+    "$bin_dir/../../models/ggml-small.en.bin" \
+    "$bin_dir/../../models/ggml-base.en.bin"
+  do
+    if [ -f "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 notify() {
   if [ "$(tmux_get @tmux_whisper_show_messages)" = "1" ]; then
     tmux display-message "whisper: $1"
@@ -73,8 +99,12 @@ start_recording() {
   fi
 
   model_path="$(tmux_get @tmux_whisper_model)"
-  if [ -n "$model_path" ] && [ ! -f "$model_path" ]; then
-    fail "configured model file not found"
+  if [ -n "$model_path" ]; then
+    if [ ! -f "$model_path" ]; then
+      fail "configured model file not found"
+    fi
+  else
+    model_path="$(resolve_default_model || true)"
   fi
 
   wav_path="$(mktemp "${TMPDIR:-/tmp}/tmux-whisper.XXXXXX.wav")"

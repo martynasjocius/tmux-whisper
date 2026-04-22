@@ -41,7 +41,7 @@ If no supported player is available, the plugin still works, but sound effects w
 
 ## Usage
 
-By default, the plugin binds `prefix + v` when `v` is free in the tmux `prefix` table.
+By default, the plugin binds `prefix + u` when `u` is free in the tmux `prefix` table.
 
 The status segment shows one of four states:
 
@@ -53,7 +53,7 @@ The status segment shows one of four states:
 ## Options
 
 ```tmux
-set -g @tmux_whisper_key 'v'
+set -g @tmux_whisper_key 'u'
 set -g @tmux_whisper_icon '◉'
 set -g @tmux_whisper_sound_enabled '1'
 set -g @tmux_whisper_show_messages '0'
@@ -61,13 +61,17 @@ set -g @tmux_whisper_show_messages '0'
 
 ## Model Selection
 
-If `@tmux_whisper_model` is not set, the plugin lets `whisper-cli` use its own default model.
-
-In `whisper.cpp`, that default is typically:
+If `@tmux_whisper_model` is unset, the plugin resolves the real `whisper-cli` path and then looks for models relative to it, preferring:
 
 ```text
-models/ggml-base.en.bin
+../../models/ggml-medium.en.bin
 ```
+
+From the `whisper-cli` binary directory, it falls back in this order:
+
+- `../../models/ggml-medium.en.bin`
+- `../../models/ggml-small.en.bin`
+- `../../models/ggml-base.en.bin`
 
 If you want a different model, set it explicitly in your `~/.tmux.conf`:
 
